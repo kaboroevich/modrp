@@ -2,7 +2,8 @@
 
 A python package implementing the MOLI method proposed in [MOLI: multi-omics late 
 integration with deep neural networks for drug response prediction][1] by 
-Sharifi-Noghabi *et al.* (2019).
+Sharifi-Noghabi *et al.* (2019) with code available at the GitHub repository
+[hosseinshn / MOLI][3].
 
 
 
@@ -72,3 +73,4 @@ cna, y) tensors.
 
 [1]: https://doi.org/10.1093/bioinformatics/btz318
 [2]: https://github.com/adambielski/siamese-triplet
+[3]: https://github.com/hosseinshn/MOLI
