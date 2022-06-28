@@ -51,7 +51,7 @@ class MoliNet(nn.Module):
         self.mse = SupervisedEncoder(mut_in, mut_out, mut_dr)
         self.cse = SupervisedEncoder(cna_in, cna_out, cna_dr)
         cls_in = exp_out + mut_out + cna_out
-        self.clas = Classifier(cls_in, 1, cls_dr)
+        self.cls = Classifier(cls_in, 1, cls_dr)
 
     def forward(self, exp_x: Tensor, mut_x: Tensor,
                 cna_x: Tensor) -> Tuple[Tensor, Tensor]:
@@ -61,5 +61,5 @@ class MoliNet(nn.Module):
 
         omics = torch.cat((exp_enc, mut_enc, cna_enc), 1)
         omics = F.normalize(omics, p=2, dim=0)
-        output = self.clas(omics)
+        output = self.cls(omics)
         return omics, output
