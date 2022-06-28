@@ -45,8 +45,8 @@ def binarize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def get_dataset(drug: str, training_set: str, testing_set: str,
-                zenodo_dir: str) -> dict[str, dict[str, np.ndarray]]:
+def get_dataset(drug: str, training_set: str, testing_set: str, zenodo_dir: str,
+                ic50=False) -> dict[str, dict[str, np.ndarray]]:
     cohorts = pd.read_csv(os.path.join(zenodo_dir, "Multi-OMICs.cohorts.tsv"),
                           sep="\t", index_col=0)
     # filter cohort
@@ -102,11 +102,9 @@ def get_dataset(drug: str, training_set: str, testing_set: str,
             dset['train'][omic].columns, dset['test'][omic].columns))
         for tset in ('train', 'test'):
             dset[tset][omic] = dset[tset][omic].loc[:, shared_cols]
-    # binary data - not required
-    # for tset in ('train', 'test'):
-    #     for omic in ('mutation', 'cna'):
-    #        dset[tset][omic] = binarize_dataframe(dset[tset][omic])
-    # reponse
+    # response
+    if ic50:
+        dset['train']['logIC50'] = dset['train']['response']['logIC50'].values
     for tset in ('train', 'test'):
         dset[tset]['response'] = dset[tset]['response']['response'].apply(
             lambda x: ['R', 'S'].index(x))
