@@ -68,7 +68,7 @@ cna, y) tensors.
 ## Examples
 
 * MoliNet with reported optimized hyperparameters - 
-[reported_optima.ipynb](./examples/reported_optima.ipynb)
+[reported_optima.ipynb](./examples/moli_reported_optima.ipynb)
 
 
 [1]: https://doi.org/10.1093/bioinformatics/btz318

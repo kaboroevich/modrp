@@ -2,7 +2,6 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
-
 from typing import Tuple
 
 
@@ -16,7 +15,7 @@ class SupervisedEncoder(nn.Module):
             nn.BatchNorm1d(output_dim),
             nn.ReLU(),
             nn.Dropout(drop_rate)
-            )
+        )
 
     def forward(self, x: Tensor) -> Tensor:
         output = self.model(x)
@@ -25,14 +24,14 @@ class SupervisedEncoder(nn.Module):
 
 class Classifier(nn.Module):
 
-    def __init__(self, input_dim: int,
-                 output_dim: int,  drop_rate: float) -> None:
+    def __init__(self, input_dim: int, output_dim: int,
+                 drop_rate: float) -> None:
         super(Classifier, self).__init__()
         self.model = nn.Sequential(
             nn.Linear(input_dim, output_dim),
             nn.Dropout(drop_rate),
             nn.Sigmoid()
-            )
+        )
 
     def forward(self, x: Tensor) -> Tensor:
         output = self.model(x)

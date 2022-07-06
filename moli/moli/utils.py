@@ -45,75 +45,107 @@ def binarize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def get_dataset(drug: str, training_set: str, testing_set: str, zenodo_dir: str,
-                ic50=False) -> dict[str, dict[str, np.ndarray]]:
+def omic_filepaths(drug: str, train_set: str, test_set: str,
+                   zenodo_dir: str) -> dict[str, str]:
     cohorts = pd.read_csv(os.path.join(zenodo_dir, "Multi-OMICs.cohorts.tsv"),
                           sep="\t", index_col=0)
     # filter cohort
     cohort = cohorts[(cohorts.drug == drug) &
-                     (cohorts['training set'] == training_set) &
-                     (cohorts['testing set'] == testing_set)].copy()
+                     (cohorts['training set'] == train_set) &
+                     (cohorts['testing set'] == test_set)].copy()
     if cohort.shape[0] == 0:
         raise ValueError(
-            f"No cohorts identified with parameters {drug}:{training_set}:"
-            f"{testing_set}")
+            f"No cohorts identified with parameters {drug}:{train_set}:"
+            f"{test_set}")
     elif cohort.shape[0] > 1:
         raise ValueError(
             f"Multiple cohorts identified with parameters {drug}:"
-            f"{training_set}:{testing_set}")
+            f"{train_set}:{test_set}")
     fcols = cohort.filter(regex=r'_file$', axis=1).columns
-    for fcol in fcols:
-        cohort[fcol] = cohort[fcol].apply(
-            lambda file: os.path.join(zenodo_dir, file)) + '.gz'
-    cohort = cohort.to_dict('records')[0]
-    # Change to use CNA_binary as state on Zenodo 4036592
-    cohort['train_CNA_file'] = cohort['train_CNA_file'].replace('CNA/',
-                                                                'CNA_binary/')
-    cohort['test_CNA_file'] = cohort['test_CNA_file'].replace('CNA/',
-                                                              'CNA_binary/')
-
-    # load datasets
-    dset = {
-        'train': read_omic_dataframes(cohort['train_exprs_file'],
-                                      cohort['train_mut_file'],
-                                      cohort['train_CNA_file'],
-                                      cohort['train_response_file']),
-        'test': read_omic_dataframes(cohort['test_exprs_file'],
-                                     cohort['test_mut_file'],
-                                     cohort['test_CNA_file'],
-                                     cohort['test_response_file'])
+    filepath = {
+        fcol: cohort[fcol].apply(lambda file:
+                                 os.path.join(zenodo_dir, file + '.gz')).item()
+        for fcol in fcols
     }
-    # Variance selection on expression
+    # Change to use CNA_binary as state on Zenodo 4036592
+    filepath['train_CNA_file'] = \
+        filepath['train_CNA_file'].replace('CNA/', 'CNA_binary/')
+    filepath['test_CNA_file'] = \
+        filepath['test_CNA_file'].replace('CNA/', 'CNA_binary/')
+    return filepath
+
+
+def ods_feature_select(ods: dict[str, dict[str, pd.DataFrame]]
+                       ) -> dict[str, dict[str, pd.DataFrame]]:
     selector = VarianceThreshold(0.05)
-    expr = dset['train']['expression']
+    expr = ods['train']['expression']
     selector.fit_transform(expr)
-    dset['train']['expression'] = expr[
+    ods['train']['expression'] = expr[
         expr.columns[selector.get_support(indices=True)]]
-    # harmonize data
-    # filter and order samples
+    return ods
+
+
+def ods_harmonize_samples(ods: dict[str, dict[str, pd.DataFrame]]
+                          ) -> dict[str, dict[str, pd.DataFrame]]:
     for tset in ('train', 'test'):
         shared_idx = reduce(np.intersect1d,
-                            [df.index for df in dset[tset].values()])
-        dset[tset] = {omic: df.loc[shared_idx, :] for (omic, df) in
-                      dset[tset].items()}
-    # filter and order genes
+                            [df.index for df in ods[tset].values()])
+        ods[tset] = {omic: df.loc[shared_idx, :] for (omic, df) in
+                     ods[tset].items()}
+    return ods
+
+
+def ods_harmonize_features(ods: dict[str, dict[str, pd.DataFrame]]
+                           ) -> dict[str, dict[str, pd.DataFrame]]:
     for omic in ('expression', 'mutation', 'cna'):
         shared_cols = reduce(np.intersect1d, (
-            dset['train'][omic].columns, dset['test'][omic].columns))
+            ods['train'][omic].columns, ods['test'][omic].columns))
         for tset in ('train', 'test'):
-            dset[tset][omic] = dset[tset][omic].loc[:, shared_cols]
-    # response
-    if ic50:
-        dset['train']['logIC50'] = dset['train']['response']['logIC50'].values
-    for tset in ('train', 'test'):
-        dset[tset]['response'] = dset[tset]['response']['response'].apply(
-            lambda x: ['R', 'S'].index(x))
-    # Convert to numpy arrays
-    for tset in ('train', 'test'):
-        for omic in ('expression', 'mutation', 'cna', 'response'):
-            dset[tset][omic] = dset[tset][omic].values
+            ods[tset][omic] = ods[tset][omic].loc[:, shared_cols]
+    return ods
 
-    return dset
+
+def ods_label_encoder(ods: dict[str, dict[str, pd.DataFrame]],
+                      ic50: bool = False) -> dict[str, dict[str, pd.DataFrame]]:
+    if ic50:
+        ods['train']['logIC50'] = ods['train']['response']['logIC50']
+    for tset in ('train', 'test'):
+        ods[tset]['response'] = ods[tset]['response']['response'].apply(
+            lambda x: ['R', 'S'].index(x))
+    return ods
+
+
+def ods_dataframe_to_numpy(ods: dict[str, dict[str, pd.DataFrame]]
+                           ) -> dict[str, dict[str, np.ndarray]]:
+    onp: dict[str, dict[str, np.ndarray]] = {}
+    for tset in ods.keys():
+        onp[tset] = {}
+        for omic in ods[tset].keys():
+            onp[tset][omic] = ods[tset][omic].values
+    return onp
+
+
+def get_dataset(drug: str, train_set: str, test_set: str, zenodo_dir: str,
+                ic50=False) -> dict[str, dict[str, np.ndarray]]:
+
+    filepath = omic_filepaths(drug, train_set, test_set, zenodo_dir)
+    # load datasets
+    dfset = {
+        'train': read_omic_dataframes(filepath['train_exprs_file'],
+                                      filepath['train_mut_file'],
+                                      filepath['train_CNA_file'],
+                                      filepath['train_response_file']),
+        'test': read_omic_dataframes(filepath['test_exprs_file'],
+                                     filepath['test_mut_file'],
+                                     filepath['test_CNA_file'],
+                                     filepath['test_response_file'])
+    }
+    dfset = ods_feature_select(dfset)
+    dfset = ods_harmonize_samples(dfset)
+    dfset = ods_harmonize_features(dfset)
+    dfset = ods_label_encoder(dfset, ic50)
+    npset = ods_dataframe_to_numpy(dfset)
+    return npset
 
 
 def moli_weighted_sampler(targets: Tensor) -> Sampler:
@@ -165,8 +197,8 @@ def random_hyperparameters(seed: int = None) -> dict[str, float]:
     return hp
 
 
-def optimal_hyperparameters(drug: str, training_set: str,
-                            testing_set: str) -> dict[str, float]:
+def optimal_hyperparameters(drug: str, train_set: str,
+                            test_set: str) -> dict[str, float]:
     hp_optima = pd.DataFrame([
         {
             'training set': 'GDSC',
@@ -317,16 +349,16 @@ def optimal_hyperparameters(drug: str, training_set: str,
         }
     ])
     hp_optima = hp_optima[(hp_optima.drug == drug) &
-                          (hp_optima['training set'] == training_set) &
-                          (hp_optima['testing set'] == testing_set)].copy()
+                          (hp_optima['training set'] == train_set) &
+                          (hp_optima['testing set'] == test_set)].copy()
     if hp_optima.shape[0] == 0:
         raise ValueError(
-            f"No cohorts identified with parameters {drug}:{training_set}:"
-            f"{testing_set}")
+            f"No cohorts identified with parameters {drug}:{train_set}:"
+            f"{test_set}")
     elif hp_optima.shape[0] > 1:
         raise ValueError(
             f"Multiple cohorts identified with parameters {drug}:"
-            f"{training_set}:{testing_set}")
+            f"{train_set}:{test_set}")
     return (hp_optima
             .drop(['training set', 'testing set', 'drug'], axis=1)
             .to_dict('records')[0])

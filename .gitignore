@@ -129,4 +129,5 @@ dmypy.json
 .pyre/
 
 # example data directories
-examples/data/
+/moli/examples/data/
+/superfelt/examples/data/

@@ -1,4 +1,2 @@
-from . import nn
-from . import optim
-from . import loss
-from . import utils
+__all__ = ["nn", "optim", "loss", "utils"]
+from . import *

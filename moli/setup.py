@@ -9,7 +9,7 @@ setup(
     name='moli',
     version='0.1',
     packages=['moli'],
-    url='https://github.com/kaboroevich/MOLI',
+    url='https://github.com/kaboroevich/modrp/moli',
     license='GPLv3',
     author='Keith A. Boroevich',
     author_email='kaboroevich@gmail.com',
