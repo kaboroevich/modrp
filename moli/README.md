@@ -1,6 +1,6 @@
 # MOLI
 
-A python package implementing the MOLI method proposed in [MOLI: multi-omics late 
+A python package implementing the MOLI method published in [MOLI: multi-omics late 
 integration with deep neural networks for drug response prediction][1] by 
 Sharifi-Noghabi *et al.* (2019) with code available at the GitHub repository
 [hosseinshn / MOLI][3].
@@ -12,7 +12,7 @@ Sharifi-Noghabi *et al.* (2019) with code available at the GitHub repository
 ### nn.MoliNet
 
 A custom torch.nn.Module combining the three omic (expression, mutation, cna) 
-supervised encoders and the classification layers into a single network. 
+supervised encoders and the classification layer into a single network. 
 
 ```python
 class nn.MoliNet(exp_in, exp_out, exp_dr, mut_in, mut_out, mut_dr,
@@ -68,7 +68,7 @@ cna, y) tensors.
 ## Examples
 
 * MoliNet with reported optimized hyperparameters - 
-[reported_optima.ipynb](./examples/moli_reported_optima.ipynb)
+[moli_reported_optima.ipynb](./examples/moli_reported_optima.ipynb)
 
 
 [1]: https://doi.org/10.1093/bioinformatics/btz318
