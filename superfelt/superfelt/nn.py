@@ -9,18 +9,18 @@ from typing import Tuple
 class SuperFeltNet(nn.Module):
 
     def __init__(self,
-                 exp_in: int, exp_out: int, exp_dr: float, exp_ep: int,
-                 mut_in: int, mut_out: int, mut_dr: float, mut_ep: int,
-                 cna_in: int, cna_out: int, cna_dr: float, cna_ep: int,
-                 cls_dr: float) -> None:
+                 exp_in: int, exp_out: int, exp_ep: int,
+                 mut_in: int, mut_out: int, mut_ep: int,
+                 cna_in: int, cna_out: int, cna_ep: int,
+                 enc_dr: float, cls_dr: float) -> None:
         super(SuperFeltNet, self).__init__()
         self.epoch = 0
         self.exp_ep = exp_ep
-        self.ese = moli.nn.SupervisedEncoder(exp_in, exp_out, exp_dr)
+        self.ese = moli.nn.SupervisedEncoder(exp_in, exp_out, enc_dr)
         self.mut_ep = mut_ep
-        self.mse = moli.nn.SupervisedEncoder(mut_in, mut_out, mut_dr)
+        self.mse = moli.nn.SupervisedEncoder(mut_in, mut_out, enc_dr)
         self.cna_ep = cna_ep
-        self.cse = moli.nn.SupervisedEncoder(cna_in, cna_out, cna_dr)
+        self.cse = moli.nn.SupervisedEncoder(cna_in, cna_out, enc_dr)
         cls_in = exp_out + mut_out + cna_out
         self.cls = moli.nn.Classifier(cls_in, 1, cls_dr)
         self.update_grad(self.cls, False)

@@ -17,8 +17,8 @@ Once all encoders have stopped training, the classifier is trained for the
 remaining epochs.
 
 ```python
-class nn.MoliNet(exp_in, exp_out, exp_dr, exp_ep mut_in, mut_out, 
-mut_dr, mut_ep, cna_in, cna_out, cna_dr, cna_ep, cls_dr)
+class nn.MoliNet(exp_in, exp_out, exp_ep, mut_in, mut_out, mut_ep, 
+cna_in, cna_out, cna_ep, enc_dr, cls_dr)
 ```
 The output is a tuple where the first three elements are the output of the
 supervised encoders (expression, mutation, cna) and the fourth element is 
@@ -27,9 +27,9 @@ the output of the classifier.
 #### Parameters
 * **(exp|mut|cna)_in**: input size to the omic supervised encoder layer
 * **(exp|mut|cna)_out**: hidden layer size of the omic supervised encoder layer
-* **(exp|mut|cna)_dr**: decay rate of the omic supervised encoder layer
 * **(exp|mut|cna)_ep**: number of epochs (calls to forward function) to train 
 the omic supervised encoder layer
+* **enc_dr**: decay rate of the omic supervised encoder layers
 * **cls_dr**: decay rate of the classifer layer
 
 ### optim.SuperFeltAdagrad
@@ -37,14 +37,13 @@ the omic supervised encoder layer
 A custom torch.optim.Adagrad optimizer for use with Super.FELT.
 
 ```python
-class optim.MoliAdagrad(net, exp_lr, exp_wd, mut_lr, mut_wd, 
-cna_lr, cna_wd, cls_lr, cls_wd)
+class optim.MoliAdagrad(net, enc_lr, enc_wd, cls_lr, cls_wd)
 ```
 
 #### Parameters
 * **net**: MoliNet network
-* **(exp|mut|cna)_lr**: learning rate of the omic supervised encoder
-* **(exp|mut|cna)_wd**: weight decay of the omic supervised encoder
+* **enc_lr**: learning rate of the omic supervised encoders
+* **enc_wd**: weight decay of the omic supervised encoders
 * **cls_lr**: learning rate of the classifier
 * **cls_wd**: weight decay of the classifier
 

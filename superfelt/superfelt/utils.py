@@ -43,7 +43,7 @@ def read_omic_dataframes(expresion_file: str, mutation_file: str, cna_file: str,
                            decimal=".").transpose()
     cna = pd.read_csv(cna_file, sep="\t", index_col=0, decimal=".").transpose()
     cna = cna.loc[:, ~cna.columns.duplicated()]
-    response = pd.read_csv(response_file, sep="\t", index_col=0, decimal=",")
+    response = pd.read_csv(response_file, sep="\t", index_col=0, decimal=".")
     response.index = response.index.astype(str)
     return {
         'expression': expression,
@@ -82,9 +82,10 @@ def ods_binarize(ods: dict[str, dict[str, pd.DataFrame]], bomics: list,
     return ods
 
 
-def get_dataset(drug: str, training_set: str, testing_set: str,
-                zenodo_dir: str,) -> dict[str, dict[str, np.ndarray]]:
-    filepath = omic_filepaths(drug, training_set, testing_set, zenodo_dir)
+def get_dataset(drug: str, train_set: str, test_set: str, zenodo_dir: str,
+                ic50: bool = False, feature_selection: bool = True
+                ) -> dict[str, dict[str, np.ndarray]]:
+    filepath = omic_filepaths(drug, train_set, test_set, zenodo_dir)
     # load datasets
     dfset = {
         'train': read_omic_dataframes(filepath['train_exprs_file'],
@@ -96,11 +97,12 @@ def get_dataset(drug: str, training_set: str, testing_set: str,
                                       filepath['test_CNA_file'],
                                       filepath['test_response_file'])}
     #
-    dfset = ods_feature_select(dfset)
+    if feature_selection:
+        dfset = ods_feature_select(dfset)
     dfset = ods_binarize(dfset, ['mutation', 'cna'])
     dfset = ods_harmonize_samples(dfset)
     dfset = ods_harmonize_features(dfset)
-    dfset = ods_label_encoder(dfset)
+    dfset = ods_label_encoder(dfset, ic50)
     npset = ods_dataframe_to_numpy(dfset)
     return npset
 
@@ -110,9 +112,7 @@ def hyperparameter_tuning_sets():
     # https://github.com/DMCB-GIST/Super.FELT/blob/main/Super_FELT_main.py
     hp_base = {
         'margin': 1.,
-        'exp_lr': 0.01,
-        'mut_lr': 0.01,
-        'cna_lr': 0.01,
+        'enc_lr': 0.01,
         'cls_lr': 0.01,
         'batch_size': 55,
         'exp_hl': 256,
@@ -126,30 +126,14 @@ def hyperparameter_tuning_sets():
     hp_base['epochs'] = np.max([hp_base['exp_ep'], hp_base['mut_ep'],
                                 hp_base['cna_ep']]) + hp_base['cls_ep']
     hp_tune = [
-        {'exp_dr': 0.1,  'mut_dr': 0.1,  'cna_dr': 0.1,
-         'exp_wd': 0.,   'mut_wd': 0.,   'cna_wd': 0.,
-         'cls_dr': 0.1,  'cls_wd': 0.00},
-        {'exp_dr': 0.3,  'mut_dr': 0.3,  'cna_dr': 0.3,
-         'exp_wd': 0.01, 'mut_wd': 0.01, 'cna_wd': 0.01,
-         'cls_dr': 0.3,  'cls_wd': 0.01},
-        {'exp_dr': 0.3,  'mut_dr': 0.3,  'cna_dr': 0.3,
-         'exp_wd': 0.05, 'mut_wd': 0.05, 'cna_wd': 0.05,
-         'cls_dr': 0.3,  'cls_wd': 0.01},
-        {'exp_dr': 0.5,  'mut_dr': 0.5,  'cna_dr': 0.5,
-         'exp_wd': 0.01, 'mut_wd': 0.01, 'cna_wd': 0.01,
-         'cls_dr': 0.5,  'cls_wd': 0.01},
-        {'exp_dr': 0.5,  'mut_dr': 0.5,  'cna_dr': 0.5,
-         'exp_wd': 0.1,  'mut_wd': 0.1,  'cna_wd': 0.1,
-         'cls_dr': 0.7,  'cls_wd': 0.15},
-        {'exp_dr': 0.3,  'mut_dr': 0.3,  'cna_dr': 0.3,
-         'exp_wd': 0.01, 'mut_wd': 0.01, 'cna_wd': 0.01,
-         'cls_dr': 0.5,  'cls_wd': 0.01},
-        {'exp_dr': 0.4,  'mut_dr': 0.4,  'cna_dr': 0.4,
-         'exp_wd': 0.01, 'mut_wd': 0.01, 'cna_wd': 0.01,
-         'cls_dr': 0.4,  'cls_wd': 0.01},
-        {'exp_dr': 0.5,  'mut_dr': 0.5,  'cna_dr': 0.5,
-         'exp_wd': 0.1,  'mut_wd': 0.1,  'cna_wd': 0.1,
-         'cls_dr': 0.5,  'cls_wd': 0.1}
+        {'enc_dr': 0.1, 'enc_wd': 0.00, 'cls_dr': 0.1, 'cls_wd': 0.00},
+        {'enc_dr': 0.3, 'enc_wd': 0.01, 'cls_dr': 0.3, 'cls_wd': 0.01},
+        {'enc_dr': 0.3, 'enc_wd': 0.05, 'cls_dr': 0.3, 'cls_wd': 0.01},
+        {'enc_dr': 0.5, 'enc_wd': 0.01, 'cls_dr': 0.5, 'cls_wd': 0.01},
+        {'enc_dr': 0.5, 'enc_wd': 0.10, 'cls_dr': 0.7, 'cls_wd': 0.15},
+        {'enc_dr': 0.3, 'enc_wd': 0.01, 'cls_dr': 0.5, 'cls_wd': 0.01},
+        {'enc_dr': 0.4, 'enc_wd': 0.01, 'cls_dr': 0.4, 'cls_wd': 0.01},
+        {'enc_dr': 0.5, 'enc_wd': 0.10, 'cls_dr': 0.5, 'cls_wd': 0.1}
     ]
     hp_set = [hp_base | x for x in hp_tune]
     return hp_set
