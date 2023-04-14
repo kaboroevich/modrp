@@ -19,7 +19,7 @@ def read_omic_dataframes(expresion_file: str, mutation_file: str, cna_file: str,
                            decimal=".").transpose()
     cna = pd.read_csv(cna_file, sep="\t", index_col=0, decimal=".").transpose()
     cna = cna.loc[:, ~cna.columns.duplicated()]
-    response = pd.read_csv(response_file, sep="\t", index_col=0, decimal=",")
+    response = pd.read_csv(response_file, sep="\t", index_col=0, decimal=".")
     response.index = response.index.astype(str)
     return {
         'expression': expression,
@@ -126,7 +126,8 @@ def ods_dataframe_to_numpy(ods: dict[str, dict[str, pd.DataFrame]]
 
 
 def get_dataset(drug: str, train_set: str, test_set: str, zenodo_dir: str,
-                ic50=False) -> dict[str, dict[str, np.ndarray]]:
+                ic50: bool = False, feature_selection: bool = True
+                ) -> dict[str, dict[str, np.ndarray]]:
 
     filepath = omic_filepaths(drug, train_set, test_set, zenodo_dir)
     # load datasets
@@ -140,7 +141,8 @@ def get_dataset(drug: str, train_set: str, test_set: str, zenodo_dir: str,
                                      filepath['test_CNA_file'],
                                      filepath['test_response_file'])
     }
-    dfset = ods_feature_select(dfset)
+    if feature_selection:
+        dfset = ods_feature_select(dfset)
     dfset = ods_harmonize_samples(dfset)
     dfset = ods_harmonize_features(dfset)
     dfset = ods_label_encoder(dfset, ic50)
@@ -157,10 +159,11 @@ def moli_weighted_sampler(targets: Tensor) -> Sampler:
     return sampler
 
 
-def moli_dataloader(dataset, batch_size):
+def moli_dataloader(dataset, batch_size, **kwargs):
     sampler = moli_weighted_sampler(dataset[:][-1])
     loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size,
-                                         shuffle=False, sampler=sampler)
+                                         shuffle=False, sampler=sampler,
+                                         **kwargs)
     return loader
 
 
